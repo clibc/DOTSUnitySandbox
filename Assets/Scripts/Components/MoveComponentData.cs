@@ -7,4 +7,5 @@ public struct MoveComponentData : IComponentData {
     public float rotationSpeed;
     public float3 move_dir;
     public quaternion rotation;
+    public int destroyed_obj_count;
 }

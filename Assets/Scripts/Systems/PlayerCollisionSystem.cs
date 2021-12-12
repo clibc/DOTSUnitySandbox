@@ -20,11 +20,11 @@ public class PlayerCollisionSystem : JobComponentSystem {
         commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
     }
 
-
     [BurstCompile]
     struct PlayerCollisionSystemJob : ITriggerEventsJob {
-        [ReadOnly] public ComponentDataFromEntity<MoveComponentData> allMovables;
-        [ReadOnly] public ComponentDataFromEntity<PlayerTag> allPlayers;
+        public ComponentDataFromEntity<MoveComponentData> allMovables;
+        public ComponentDataFromEntity<PlayerTag> allPlayers;
+
         public EntityCommandBuffer commandBuffer;
 
         public void Execute( TriggerEvent triggerEvent ) {
@@ -32,21 +32,24 @@ public class PlayerCollisionSystem : JobComponentSystem {
             Entity b = triggerEvent.EntityB;
 
             if ( allPlayers.HasComponent( a ) ) {
-                OnCollisionStay( b, ref commandBuffer );
+                OnTriggerStay( a, b, ref commandBuffer );
             } else if ( allPlayers.HasComponent( b ) ) {
-                OnCollisionStay( b, ref commandBuffer );
+                OnTriggerStay( b, a, ref commandBuffer );
             }
         }
 
-        public void OnCollisionStay( Entity other, ref EntityCommandBuffer commandBuffer ) {
+        public void OnTriggerStay( Entity _this, Entity other, ref EntityCommandBuffer commandBuffer ) {
             commandBuffer.DestroyEntity( other );
+            MoveComponentData m = allMovables[_this];
+            m.destroyed_obj_count += 1;
+            allMovables[_this] = m;
         }
     }
 
     protected override JobHandle OnUpdate( JobHandle inputDeps ) {
         var job = new PlayerCollisionSystemJob();
-        job.allMovables = GetComponentDataFromEntity<MoveComponentData>( true );
-        job.allPlayers = GetComponentDataFromEntity<PlayerTag>( true );
+        job.allMovables = GetComponentDataFromEntity<MoveComponentData>( false );
+        job.allPlayers = GetComponentDataFromEntity<PlayerTag>( false );
         job.commandBuffer = commandBufferSystem.CreateCommandBuffer();
 
         JobHandle handle = job.Schedule( stepPhysicsWorld.Simulation, ref buildPhysicsWorld.PhysicsWorld, inputDeps );
@@ -54,5 +57,4 @@ public class PlayerCollisionSystem : JobComponentSystem {
         commandBufferSystem.AddJobHandleForProducer( handle );
         return handle;
     }
-
 }
